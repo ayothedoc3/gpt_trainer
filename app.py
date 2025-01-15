@@ -4,13 +4,10 @@ import json
 from typing import Optional
 
 class GPTTrainerAuth:
-    def __init__(self, api_endpoint: str):
-        """Initialize the GPT-Trainer authentication handler.
-        
-        Args:
-            api_endpoint (str): The GPT-Trainer verification endpoint URL
-        """
-        self.api_endpoint = api_endpoint
+    def __init__(self):
+        """Initialize the GPT-Trainer authentication handler."""
+        # Using GPT-Trainer's standard authentication endpoint
+        self.api_endpoint = "https://app.gpt-trainer.com/api/v1/verify-token"
         
     def verify_token(self, token: str) -> tuple[bool, Optional[dict]]:
         """Verify a user token with GPT-Trainer.
@@ -30,8 +27,15 @@ class GPTTrainerAuth:
             
             if response.status_code == 200:
                 return True, response.json()
+            elif response.status_code == 401:
+                st.error("Invalid token. Please check your token and try again.")
+            else:
+                st.error(f"Verification failed. Status code: {response.status_code}")
             return False, None
             
+        except requests.exceptions.ConnectionError:
+            st.error("Failed to connect to GPT-Trainer. Please check your internet connection.")
+            return False, None
         except Exception as e:
             st.error(f"Verification error: {str(e)}")
             return False, None
@@ -45,12 +49,19 @@ def init_session_state():
 
 def login_page():
     """Render the login page and handle authentication."""
-    st.title("Login")
+    st.title("Login with GPT-Trainer")
+    
+    st.markdown("""
+    ### How to get your token:
+    1. Go to your GPT-Trainer dashboard
+    2. Find your chatbot configuration
+    3. Copy your authentication token
+    """)
     
     token = st.text_input("Enter your GPT-Trainer token:", type="password")
     
     if st.button("Login"):
-        auth_handler = GPTTrainerAuth(st.secrets["gpt_trainer_endpoint"])
+        auth_handler = GPTTrainerAuth()
         success, user_data = auth_handler.verify_token(token)
         
         if success:
@@ -58,8 +69,6 @@ def login_page():
             st.session_state.user_data = user_data
             st.success("Successfully authenticated!")
             st.rerun()
-        else:
-            st.error("Authentication failed. Please check your token.")
 
 def main_app():
     """Render the main application content for authenticated users."""
